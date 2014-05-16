@@ -2,6 +2,8 @@
 #include <cstring>
 #include <string>
 
+#include "decoder.h"
+
 int main(int argc, char *argv[]) {
     std::string file_in_name, file_out_name;
 
@@ -32,22 +34,13 @@ int main(int argc, char *argv[]) {
         file_out_name = "monalisa.bmp";
     }
 
-    FILE *file_in = fopen(file_in_name.c_str(), "r");
-    if (file_in == NULL) {
-        puts("Could not open input file!!");
-        return -1;
+    try {
+        Decoder(file_in_name, file_out_name).solve();
+    } catch (const char *err_msg) {
+        puts(err_msg);
+    } catch (std::string str) {
+        puts(str.c_str());
     }
-
-    FILE *file_out = fopen(file_out_name.c_str(), "w");
-    if (file_out == NULL) {
-        puts("Could not open output file!!");
-        return -1;
-    }
-
-    decode(file_in, file_out);
-
-    fclose(file_in);
-    fclose(file_out)
 
     return 0;
 }

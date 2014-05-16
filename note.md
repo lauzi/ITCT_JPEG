@@ -9,14 +9,11 @@ jpeg (header) 內的數值都是 big-endian，bmp 內的數值是 little-endian
 看是不是 0x00，如果是的話這個 0xff 就是 codeword 的一部份，然後忽略
 掉 0x00；不然就是 Marker (雖然 sample jpg 裡沒有)
 
-AC 係數如果最後一個不是 0 的話，就不會有 EOB。所以除了讀到 EOB 要
-break，讀滿 64 格時也要
+AC 係數如果最後一個不是 0 的話，就不會有 EOB。所以除了讀到 EOB 要 break，讀滿 64 格時也要
 
-Huffman decode 最好查表，8bit 2-level 或直接 16bit 之類的，一個一個
-bit 解可能會有點慢(?)
+Huffman decode 最好查表，8bit 2-level 或直接 16bit 之類的，一個一個 bit 解可能會有點慢(?)
 
-有碰過最後一個 DataUnit 不是用 EOB 結束，是直接 EOI 結束的 (sample
-jpg 沒有)
+有碰過最後一個 DataUnit 不是用 EOB 結束，是直接 EOI 結束的 (sample jpg 沒有)
 
 
 又是一個沒講過的卡關點一枚 ...

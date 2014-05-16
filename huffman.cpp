@@ -1,19 +1,5 @@
 #include <cstdio>
-
-#include <string>
-
-typedef unsigned char uint8;
-
-struct Node {
-    Node *cld[2];
-    uint8 val;
-    int cnt;
-
-    Node (): cld(), val(-1), cnt(0) {}
-    ~Node() { delete cld[0]; delete cld[1]; }
-
-    void print(std::string path = "") const;
-};
+#include "huffman.h"
 
 void Node::print(std::string path) const {
     if (cld[0] == NULL && cld[1] == NULL)
@@ -21,22 +7,8 @@ void Node::print(std::string path) const {
 
     for (int i = 0; i < 2; ++i)
         if (cld[i] != NULL)
-            cld[i]->print(path + (char)('0' + i), subtree_size>>1);
+            cld[i]->print(path + (char)('0' + i));
 }
-
-
-class Huffman {
-public:
-    Huffman(): _root(new Node) {}
-    ~Huffman() { delete _root; }
-
-    void insert(int len, uint8 val);
-    void print() const { _root->print(); }
-
-    void clear() { delete _root; _root = new Node; }
-private:
-    Node *_root;
-};
 
 void Huffman::insert(int len, uint8 val) {
     int size_needed = 1 << (16-len);
@@ -56,7 +28,7 @@ void Huffman::insert(int len, uint8 val) {
     cur->val = val;
 }
 
-
+/*
 int main() {
     int li[] = {0, 2, 1, 3, 3, 2, 4, 3, 5, 5, 4, 4, 0, 0, 1, 125};
     uint8 vi[] = {
@@ -74,3 +46,4 @@ int main() {
     tree.print();
     return 0;
 }
+*/

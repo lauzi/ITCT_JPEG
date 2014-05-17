@@ -34,6 +34,9 @@ int main(int argc, char *argv[]) {
         file_out_name = "monalisa.bmp";
     }
 
+    printf("Input file name: %s\n", file_in_name.c_str());
+    printf("Output file name: %s\n", file_out_name.c_str());
+
     try {
         Decoder(file_in_name, file_out_name).solve();
     } catch (const char *err_msg) {

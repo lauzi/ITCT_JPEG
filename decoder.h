@@ -102,7 +102,7 @@ private:
 
     size_t _read(void *ptr, size_t size, size_t count) {
         size_t sum = 0;
-        for (int i = 0; i < count; ++i)
+        for (size_t i = 0; i < count; ++i)
             for (int j = size-1; j >= 0; --j)
                 sum += fread((char*)ptr+i*size+j, 1, 1, _IN);
         return sum;
@@ -127,9 +127,9 @@ private:
 
     uint8 _Nf;
 
-    Huffman _hs[4];
+    Huffman _hs[2][4];
 
-    int8 _DC_predict;
+    int16 _DC_predict;
     uint8 _hc_input;
     int _hc_i;
     Huffman *_hc_DC, *_hc_AC;
@@ -141,8 +141,8 @@ private:
     void _DRI();
 
     bool _read_next_header();
-    int8 _read_DC();
-    int8 _read_AC(int &zz_idx);
+    int16 _read_DC();
+    int16 _read_AC(int &zz_idx);
     int _read_n_bits(int n);
     bool _read_next_entropy_byte();
     void _read_entropy_block(uint8 c, double out_block[8][8]);

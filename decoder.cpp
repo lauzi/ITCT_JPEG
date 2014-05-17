@@ -326,36 +326,47 @@ bool Decoder::_read_next_entropy_byte() {
     return true;
 }
 
+// http://www.reznik.org/papers/SPIE07_MPEG-C_IDCT.pdf
+void fast_idct(double &o0, double &o1, double &o2, double &o3,
+               double &o4, double &o5, double &o6, double &o7) {
+    double a0 = o0, a1 = o4, a2 = o2, a3 = o6;
+    double a4 = o1 - o7, a5 = o3 * M_SQRT2, a6 = o5 * M_SQRT2, a7 = o1 + o7;
+
+    static const double a_angle = 3.0 * M_PI / 8;
+    static const double a = M_SQRT2 * cos(a_angle), b = M_SQRT2 * sin(a_angle);
+    double b0 = a0 + a1, b1 = a0 - a1;
+    double b2 = a2 * a - a3 * b, b3 = a2 * b + a3 * a;
+    double b4 = a4 + a6, b5 = a7 - a5, b6 = a4 - a6, b7 = a7 + a5;
+
+    static const double b_angle = M_PI / 16;
+    static const double d = cos(b_angle), e = sin(b_angle);
+    static const double c_angle = a_angle / 2;
+    static const double n = cos(c_angle), t = sin(c_angle);
+
+    double c0 = b0 + b3, c1 = b1 + b2, c2 = b1 - b2, c3 = b0 - b3;
+    double c4 = b4 * n - b7 * t, c5 = b5 * d - b6 * e;
+    double c6 = b6 * d + b5 * e, c7 = b7 * n + b4 * t;
+
+    o0 = c0 + c7, o1 = c1 + c6, o2 = c2 + c5, o3 = c3 + c4;
+    o4 = c3 - c4, o5 = c2 - c5, o6 = c1 - c6, o7 = c0 - c7;
+}
+
 void idct(double (*output)[8], const int16 (*input)[8]) {
-    static double coeff[8][8][8][8];
+    for (int i = 0; i < 8; ++i)
+        for (int j = 0; j < 8; ++j)
+            output[i][j] = (double)input[i][j];
 
-    if (coeff[0][0][0][0] == 0.0) {
-        double c[8];
-        c[0] = M_SQRT1_2 / 2;
-        for (int i = 1; i < 8; ++i)
-            c[i] = 1.0 / 2;
+    for (int i = 0; i < 8; ++i)
+        fast_idct(output[i][0], output[i][1], output[i][2], output[i][3],
+                  output[i][4], output[i][5], output[i][6], output[i][7]);
 
-        double coss[8][8];
-        for (int i = 0; i < 8; ++i)
-            for (int u = 0; u < 8; ++u)
-                coss[i][u] = cos(M_PI * (2*i+1) * u / 16);
+    for (int i = 0; i < 8; ++i)
+        fast_idct(output[0][i], output[1][i], output[2][i], output[3][i],
+                  output[4][i], output[5][i], output[6][i], output[7][i]);
 
-        for (int i = 0; i < 8; ++i)
-            for (int j = 0; j < 8; ++j)
-                for (int u = 0; u < 8; ++u)
-                    for (int v = 0; v < 8; ++v)
-                        coeff[i][j][u][v] = c[u] * c[v] * coss[i][u] * coss[j][v];
-    }
-
-    for (int i = 0; i < 8; ++i) {
-        for (int j = 0; j < 8; ++j) {
-            double sum = 0.0;
-            for (int u = 0; u < 8; ++u)
-                for (int v = 0; v < 8; ++v)
-                    sum += coeff[i][j][u][v] * input[u][v];
-            output[i][j] = sum + 128.0;
-        }
-    }
+    for (int i = 0; i < 8; ++i)
+        for (int j = 0; j < 8; ++j)
+            output[i][j] = output[i][j] / 8 + 128;
 }
 
 

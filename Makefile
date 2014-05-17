@@ -1,5 +1,5 @@
 main.exe: main.cpp huffman.cpp decoder.cpp
-	g++ huffman.cpp decoder.cpp main.cpp -o main.exe -Wall -Wextra -O2
+	g++ -Wall -Wextra -O2 huffman.cpp decoder.cpp main.cpp -o main.exe
 
 .PHONY: clean
 clean:

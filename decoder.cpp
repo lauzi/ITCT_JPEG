@@ -267,11 +267,9 @@ int16 Decoder::_read_DC() {
 int16 Decoder::_read_AC(int &zz_idx) {
     int RS = -1;
 
-    int len = 0;
     for (Node *node = _hc_AC->root(); RS == -1; _hc_i -= 1) {
         if (_hc_i < 0) _read_next_entropy_byte();
 
-        len += 1;
 
         node = node->cld[(_hc_input >> _hc_i) & 1];
         if (node->cld[0] == NULL and node->cld[1] == NULL)
@@ -351,11 +349,7 @@ void fast_idct(double &o0, double &o1, double &o2, double &o3,
     o4 = c3 - c4, o5 = c2 - c5, o6 = c1 - c6, o7 = c0 - c7;
 }
 
-void idct(double (*output)[8], const int16 (*input)[8]) {
-    for (int i = 0; i < 8; ++i)
-        for (int j = 0; j < 8; ++j)
-            output[i][j] = (double)input[i][j];
-
+void idct(double (*output)[8]) {
     for (int i = 0; i < 8; ++i)
         fast_idct(output[i][0], output[i][1], output[i][2], output[i][3],
                   output[i][4], output[i][5], output[i][6], output[i][7]);
@@ -376,27 +370,21 @@ void Decoder::_read_entropy_block(uint8 J, double out_block[8][8]) {
     _hc_DC = &_hs[0][_DC_Huffman_selector[J]];
     _hc_AC = &_hs[1][_AC_Huffman_selector[J]];
 
-    static int16 block[8][8];
+    memset(out_block, 0, sizeof(double)*8*8);
 
-    memset(block, 0, sizeof(block));
-
-    block[0][0] = _read_DC();
+    int t = _Qtable_selector[c];
+    out_block[0][0] = _read_DC() * _quantization_tables[t][0][0];
 
     for (int idx = 1, run_length; idx < 64; ++idx) {
         int16 val = _read_AC(run_length);
         if (val == 0 && run_length == 0) break;
         idx += run_length;
-        block[zigzag_y[idx]][zigzag_x[idx]] = val;
+
+        int y = zigzag_y[idx], x = zigzag_x[idx];
+        out_block[y][x] = val * _quantization_tables[t][y][x];
     }
 
-    static int16 imm_block[8][8];
-
-    int t = _Qtable_selector[c];
-    for (int i = 0; i < 8; ++i)
-        for (int j = 0; j < 8; ++j)
-            imm_block[i][j] = block[i][j] * _quantization_tables[t][i][j];
-
-    idct(out_block, imm_block);
+    idct(out_block);
 }
 
 
@@ -442,7 +430,7 @@ void Decoder::_read_entropy_data() {
                             for (int dx = 0; dx < pxl_w[c] * 8; ++dx) {
                                 int iy = ny + dy, ix = nx + dx;
 
-                                cnls[c]->at(iy, ix) += block[dy>>pxl_h_ord[c]][dx>>pxl_w_ord[c]];
+                                cnls[c]->at(iy, ix) = block[dy>>pxl_h_ord[c]][dx>>pxl_w_ord[c]];
                             }
                         }
                     }
@@ -456,9 +444,6 @@ void Decoder::_read_entropy_data() {
                 _bmp->write_pxl(cnls[1]->at(y+dy, x),
                                 cnls[2]->at(y+dy, x),
                                 cnls[3]->at(y+dy, x));
-
-            for (int c = 1; c <= 3; ++c)
-                cnls[c]->clear(y+dy);
         }
     }
 

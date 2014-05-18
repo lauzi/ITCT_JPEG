@@ -10,6 +10,7 @@ typedef unsigned char uint8;
 typedef unsigned short uint16;
 typedef char int8;
 typedef short int16;
+typedef unsigned int uint32;
 
 class BMPWriter {
 public:
@@ -116,8 +117,11 @@ private:
     Huffman _hs[2][4];
 
     int16 _DC_predict;
+
+    uint32 *_hc_data;
     int _hc_bfr_idx;
     int _hc_i;
+
     Huffman *_hc_DC, *_hc_AC;
 
     void _SOF0();

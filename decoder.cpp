@@ -288,17 +288,17 @@ void Decoder::_DQT() {
 void Decoder::_DRI() {}
 
 int Decoder::_read_Huffman(Huffman *h) {
-    int r = 7 - _hc_i;
+    int r = 8 - _hc_i;
     for (int tbl = 0; ; ) {
         uint8 byte = _bfr[_hc_bfr_idx] << r;
-        byte |= (_bfr[_hc_bfr_idx+1] >> (_hc_i+1)) & fill1[r];
+        byte |= (_bfr[_hc_bfr_idx+1] >> _hc_i) & fill1[r];
 
         int val = h->tbls[tbl][byte];
         if (val < 0) {
             tbl = -val, _hc_bfr_idx += 1;
         } else {
             _hc_i -= val >> 8;
-            if (_hc_i < 0)
+            if (_hc_i <= 0)
                 _hc_i += 8, _hc_bfr_idx += 1;
             return val & 0xFF;
         }
@@ -335,24 +335,24 @@ int16 Decoder::_read_AC(int &zz_idx) {
 int Decoder::_read_n_bits(int n) {
     int acc = 0;
     for (int bits; n > 0; n -= bits) {
-        int left_len = _hc_i+1 - n;
+        int left_len = _hc_i - n;
 
         if (left_len >= 0)
             bits = n;
         else
-            bits = _hc_i + 1, left_len = 0;
+            bits = _hc_i, left_len = 0;
 
         acc <<= bits;
         acc |= (_bfr[_hc_bfr_idx] >> left_len) & fill1[bits];
 
         _hc_i -= bits;
-        if (_hc_i < 0) _hc_bfr_idx += 1, _hc_i = 7;
+        if (_hc_i <= 0) _hc_bfr_idx += 1, _hc_i = 8;
     }
     return acc;
 }
 
 void Decoder::_read_entropy_bytes() {
-    _hc_bfr_idx = _bfr_idx, _hc_i = 7;
+    _hc_bfr_idx = _bfr_idx, _hc_i = 8;
     for (int cur_bfr_idx = _bfr_idx; true; ) {
         _bfr[cur_bfr_idx] = _bfr[_bfr_idx++];
         if (_bfr[cur_bfr_idx++] == 0xFF) {

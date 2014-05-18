@@ -17,20 +17,17 @@ void BMPWriter::write_pxl(double y, double cb, double cr) {
         y + 1.772 * cb,
         y - 0.34414 * cb - 0.71414 * cr,
         y + 1.402 * cr};
-    uint8 rgbo[3];
 
+    int idx = _x++ * 3;
     for (int i = 0; i < 3; ++i) {
         rgb[i] = round(rgb[i]);
-        if (rgb[i] > 255) rgbo[i] = 255;
-        else if (rgb[i] < 0) rgbo[i] = 0;
-        else rgbo[i] = rgb[i];
+        if (rgb[i] > 255) _out_bfr[idx++] = 255;
+        else if (rgb[i] < 0) _out_bfr[idx++] = 0;
+        else _out_bfr[idx++] = rgb[i];
     }
 
-    _write(rgbo, 1, 3);
-
-    static uint8 pad_zeroes[4] = {0};
-    if (++_x == width) {
-        _write(pad_zeroes, 1, _pad_len);
+    if (_x == width) {
+        _write(_out_bfr, 1, _bfr_len);
         _x = 0;
     }
 }
@@ -38,7 +35,7 @@ void BMPWriter::write_pxl(double y, double cb, double cr) {
 void BMPWriter::_write_header() {
     _write("BM", 1, 2);
     int bfOffBits = 2+4+2+2+4+40;
-    int size = bfOffBits + height*(width + _pad_len);
+    int size = bfOffBits + height * _bfr_len;
     int tmp = 0;
 
     _write(&size, 4, 1);

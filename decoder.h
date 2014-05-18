@@ -70,9 +70,9 @@ public:
     std::string in, out;
 
     Decoder (std::string i_in, std::string i_out): in(i_in), out(i_out),
-                                                   _IN(NULL), _bmp(NULL), _bfr(NULL),
+                                                   _IN(NULL), _bmp(NULL),
                                                    _has_read_ff(false), _has_read_mark(false),
-                                                   _DC_predict(0) {}
+                                                   _bfr(NULL), _DC_predict(0) {}
     ~Decoder () { _close_files(); delete _bmp; }
 
     bool solve();
@@ -116,7 +116,7 @@ private:
     Huffman _hs[2][4];
 
     int16 _DC_predict;
-    uint8 _hc_input;
+    int _hc_bfr_idx;
     int _hc_i;
     Huffman *_hc_DC, *_hc_AC;
 
@@ -127,10 +127,13 @@ private:
     void _DRI();
 
     bool _read_next_header();
+
+    int _read_Huffman(Huffman *h);
+
     int16 _read_DC();
     int16 _read_AC(int &zz_idx);
     int _read_n_bits(int n);
-    bool _read_next_entropy_byte();
+    void _read_entropy_bytes();
     void _read_entropy_block(uint8 c, double out_block[8][8]);
     void _read_entropy_data();
 };

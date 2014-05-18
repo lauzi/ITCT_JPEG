@@ -2,35 +2,24 @@
 #define HUFFMAN_H
 
 #include <string>
+#include <vector>
 
 typedef unsigned char uint8;
 
-struct Node {
-    Node *cld[2];
-    uint8 val;
-    int cnt;
-
-    Node (): cld(), val(-1), cnt(0) {}
-    ~Node() { delete cld[0]; delete cld[1]; }
-
-    void print(std::string path = "") const;
-};
-
-
 class Huffman {
 public:
-    Huffman(): _root(new Node) {}
-    ~Huffman() { delete _root; }
-
+    Huffman() { tbls.push_back(new int [256]); clear(); }
+    ~Huffman() {
+        for (size_t i = 0; i < tbls.size(); ++i)
+            delete [] tbls[i];
+    }
     void insert(int len, uint8 val);
-    void print() const { _root->print(); }
 
-    Node* root() { return _root; }
+    void clear() { _ins_tbl = _ins_idx = 0, _unit = 1<<7, _prev_len = 1; }
 
-    void clear() { delete _root; _root = new Node; }
+    std::vector<int*> tbls;
 private:
-    Node *_root;
+    int _ins_tbl, _ins_idx, _unit, _prev_len;
 };
-
 
 #endif

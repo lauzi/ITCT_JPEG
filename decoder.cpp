@@ -6,6 +6,10 @@
 template <class T>
 T div_ceil(T a, T b) { return (a + b - 1) / b; }
 
+static int fill1[] = {0, 1, 3, 7, 15, 31, 63, 127, 255, 511,
+                      1023, 2047, 4095, 8191, 16383, 32767, 65535};
+
+
 void BMPWriter::write_pxl(double y, double cb, double cr) {
     cb -= 128, cr -= 128;
 
@@ -283,17 +287,28 @@ void Decoder::_DQT() {
 
 void Decoder::_DRI() {}
 
-int16 Decoder::_read_DC() {
-    int T = -1;
+int Decoder::_read_Huffman(Huffman *h) {
+    int r = 7 - _hc_i;
+    for (int tbl = 0; ; ) {
+        uint8 byte = _bfr[_hc_bfr_idx] << r;
+        byte |= (_bfr[_hc_bfr_idx+1] >> (_hc_i+1)) & fill1[r];
 
-    for (Node *node = _hc_DC->root(); T == -1; _hc_i -= 1) {
-        if (_hc_i < 0)
-            _read_next_entropy_byte();
-
-        node = node->cld[(_hc_input >> _hc_i) & 1];
-        if (node->cld[0] == NULL and node->cld[1] == NULL)
-            T = node->val;
+        int val = h->tbls[tbl][byte];
+        if (val < 0) {
+            tbl = -val, _hc_bfr_idx += 1;
+        } else {
+            _hc_i -= val >> 8;
+            if (_hc_i < 0)
+                _hc_i += 8, _hc_bfr_idx += 1;
+            return val & 0xFF;
+        }
     }
+
+    return -1; // should never get here
+}
+
+int16 Decoder::_read_DC() {
+    int T = _read_Huffman(_hc_DC);
 
     if (T == 0) return _DC_predict;
 
@@ -304,16 +319,7 @@ int16 Decoder::_read_DC() {
 }
 
 int16 Decoder::_read_AC(int &zz_idx) {
-    int RS = -1;
-
-    for (Node *node = _hc_AC->root(); RS == -1; _hc_i -= 1) {
-        if (_hc_i < 0) _read_next_entropy_byte();
-
-
-        node = node->cld[(_hc_input >> _hc_i) & 1];
-        if (node->cld[0] == NULL and node->cld[1] == NULL)
-            RS = node->val;
-    }
+    int RS = _read_Huffman(_hc_AC);
 
     int R = (RS>>4) & 15, S = RS & 15;
     zz_idx = R;
@@ -329,8 +335,6 @@ int16 Decoder::_read_AC(int &zz_idx) {
 int Decoder::_read_n_bits(int n) {
     int acc = 0;
     for (int bits; n > 0; n -= bits) {
-        if (_hc_i < 0) _read_next_entropy_byte();
-
         int left_len = _hc_i+1 - n;
 
         if (left_len >= 0)
@@ -339,28 +343,29 @@ int Decoder::_read_n_bits(int n) {
             bits = _hc_i + 1, left_len = 0;
 
         acc <<= bits;
-        acc |= (_hc_input >> left_len) & ((1<<bits) - 1);
+        acc |= (_bfr[_hc_bfr_idx] >> left_len) & fill1[bits];
+
         _hc_i -= bits;
+        if (_hc_i < 0) _hc_bfr_idx += 1, _hc_i = 7;
     }
     return acc;
 }
 
-bool Decoder::_read_next_entropy_byte() {
-    _read(&_hc_input, 1, 1);
-    if (_hc_input == 0xFF) {
-        uint8 tmpc;
-        _read(&tmpc, 1, 1);
+void Decoder::_read_entropy_bytes() {
+    _hc_bfr_idx = _bfr_idx, _hc_i = 7;
+    for (int cur_bfr_idx = _bfr_idx; true; ) {
+        _bfr[cur_bfr_idx] = _bfr[_bfr_idx++];
+        if (_bfr[cur_bfr_idx++] == 0xFF) {
+            uint8 tmpc = _bfr[_bfr_idx++];
 
-        if ((tmpc & 0xF8) == 0xD0) // RSTn
-            return _read_next_entropy_byte();
-
-        if (tmpc != 0x00) {
-            _has_read_ff = _has_read_mark = true, _next_mark = tmpc;
-            return false;
+            if ((tmpc & 0xF8) == 0xD0) // RSTn
+                cur_bfr_idx -= 1;
+            else if (tmpc != 0x00) {
+                _has_read_ff = _has_read_mark = true, _next_mark = tmpc;
+                break;
+            }
         }
     }
-    _hc_i = 7;
-    return true;
 }
 
 // http://www.reznik.org/papers/SPIE07_MPEG-C_IDCT.pdf
@@ -449,7 +454,7 @@ void Decoder::_read_entropy_data() {
         pxl_h_ord[c] = std::__lg(pxl_h[c]);
     }
 
-    _hc_i = -1;
+    _read_entropy_bytes();
 
     int16 DC_predict[4] = {0};
 
@@ -478,12 +483,11 @@ void Decoder::_read_entropy_data() {
             }  // close c
         }
 
-        for (int dy = 0; dy < 8 * _max_V; ++dy) {
+        for (int dy = 0; dy < 8 * _max_V; ++dy)
             for (int x = 0; x < _X; ++x)
                 _bmp->write_pxl(cnls[1]->at(y+dy, x),
                                 cnls[2]->at(y+dy, x),
                                 cnls[3]->at(y+dy, x));
-        }
     }
 
     for (int i = 1; i <= 3; ++i)

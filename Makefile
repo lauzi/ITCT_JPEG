@@ -7,7 +7,4 @@ clean:
 
 .PHONY: test
 test: main.exe
-	@main gig-sn01
-	@main gig-sn08
-	@main monalisa
-	@main teatime
+	@main gig-sn01 gig-sn08 monalisa teatime

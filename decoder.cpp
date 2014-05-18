@@ -75,6 +75,45 @@ bool Decoder::solve() {
     return true;
 }
 
+
+void Decoder::_open_files() {
+    _IN = fopen(in.c_str(), "rb");
+    if (_IN == NULL) throw "Could not open input file";
+
+    fseek(_IN, 0, SEEK_END);
+    int file_size = ftell(_IN);
+    fseek(_IN, 0, SEEK_SET);
+
+    _bfr = new uint8 [file_size];
+    fread(_bfr, 1, file_size, _IN);
+    _bfr_idx = 0;
+}
+
+void Decoder::_close_files() {
+    if (_IN != NULL) {
+        fclose(_IN), _IN = NULL; delete [] _bfr;
+    }
+}
+
+size_t Decoder::_read(void *ptr, size_t size, size_t count) {
+    uint8 *pptr = (uint8*)ptr;
+
+    for (size_t i = 0, idx = 0; i < count; ++i, idx += size)
+        for (int j = size-1; j >= 0; --j)
+            pptr[idx+j] = _bfr[_bfr_idx++];
+
+    return size * count;
+}
+
+int Decoder::_rseek(long int offset, int origin) {
+    if (origin == SEEK_SET)
+        _bfr_idx = offset;
+    else if (origin == SEEK_CUR)
+        _bfr_idx += offset;
+    else throw "WTF Y U SEEK FROM END";
+    return offset;
+}
+
 // returns false if finished
 bool Decoder::_read_next_header() {
     static uint8 _buf[16];

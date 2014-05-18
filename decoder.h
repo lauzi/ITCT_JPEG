@@ -70,7 +70,7 @@ public:
     std::string in, out;
 
     Decoder (std::string i_in, std::string i_out): in(i_in), out(i_out),
-                                                   _IN(NULL), _bmp(NULL),
+                                                   _IN(NULL), _bmp(NULL), _bfr(NULL),
                                                    _has_read_ff(false), _has_read_mark(false),
                                                    _DC_predict(0) {}
     ~Decoder () { _close_files(); delete _bmp; }
@@ -90,27 +90,13 @@ private:
     bool _has_read_mark;
     uint8 _next_mark;
 
-    void _open_files() {
-        _IN = fopen(in.c_str(), "rb");
-        if (_IN == NULL) throw "Could not open input file";
-    }
+    uint8 *_bfr;
+    int _bfr_idx;
 
-    void _close_files() {
-        if (_IN != NULL)
-            fclose(_IN), _IN = NULL;
-    }
-
-    size_t _read(void *ptr, size_t size, size_t count) {
-        size_t sum = 0;
-        for (size_t i = 0; i < count; ++i)
-            for (int j = size-1; j >= 0; --j)
-                sum += fread((char*)ptr+i*size+j, 1, 1, _IN);
-        return sum;
-    }
-
-    int _rseek(long int offset, int origin) {
-        return fseek(_IN, offset, origin);
-    }
+    void _open_files();
+    void _close_files();
+    size_t _read(void *ptr, size_t size, size_t count);
+    int _rseek(long int offset, int origin);
 
     uint16 _Y, _X;
 

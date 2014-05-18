@@ -1,4 +1,4 @@
-main.exe: main.cpp huffman.cpp decoder.cpp
+main.exe: main.cpp huffman.h huffman.cpp decoder.h decoder.cpp
 	g++ -Wall -Wextra -O2 huffman.cpp decoder.cpp main.cpp -o main.exe
 
 .PHONY: clean

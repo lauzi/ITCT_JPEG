@@ -2,6 +2,7 @@
 #define DECODER_H
 
 #include <cstdio>
+#include <cstring>
 #include <string>
 
 #include "huffman.h"

@@ -6,8 +6,8 @@ main.exe: main.cpp huffman.h huffman.cpp decoder.h decoder.cpp encoder.h encoder
 
 .PHONY: clean
 clean:
-	-rm main.exe NULL *.bmp
+	-rm main.exe NULL *.bmp *_from_bmp.jpg
 
 .PHONY: test
 test: main.exe
-	@./main.exe gig-sn01 gig-sn08 monalisa teatime
+	@./main.exe gig-sn01 gig-sn08 monalisa teatime img015 test

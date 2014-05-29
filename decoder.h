@@ -22,7 +22,7 @@ public:
         _out_bfr(NULL) {
 
         _OUT = fopen(file_name, "wb");
-        if (_OUT == NULL) throw "Could not open output file";
+        if (_OUT == NULL) throw "BMPWriter::Could not open output file";
 
         _out_bfr = new uint8 [_bfr_len]();
 

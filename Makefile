@@ -1,8 +1,8 @@
 GCC = g++
-FLAGS = -Wall -Wextra -Ofast -march=native
+FLAGS = -std=c++11 -Wall -Wextra -Ofast -march=native
 
-main.exe: main.cpp huffman.h huffman.cpp decoder.h decoder.cpp
-	${GCC} ${FLAGS} huffman.cpp decoder.cpp main.cpp -o main.exe
+main.exe: main.cpp huffman.h huffman.cpp decoder.h decoder.cpp encoder.h encoder.cpp
+	${GCC} ${FLAGS} huffman.cpp decoder.cpp encoder.cpp main.cpp -o main.exe
 
 .PHONY: clean
 clean:
@@ -10,4 +10,4 @@ clean:
 
 .PHONY: test
 test: main.exe
-	@main gig-sn01 gig-sn08 monalisa teatime
+	@./main.exe gig-sn01 gig-sn08 monalisa teatime

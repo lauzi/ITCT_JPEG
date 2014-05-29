@@ -3,6 +3,9 @@
 
 #include "decoder.h"
 
+const double M_SQRT2 = sqrt(2);
+const double M_PI = 4 * atan(1);
+
 template <class T>
 T div_ceil(T a, T b) { return (a + b - 1) / b; }
 
@@ -79,7 +82,7 @@ bool Decoder::solve() {
 
 void Decoder::_open_files() {
     _IN = fopen(in.c_str(), "rb");
-    if (_IN == NULL) throw "Could not open input file";
+    if (_IN == NULL) throw "Decoder::Could not open input file";
 
     fseek(_IN, 0, SEEK_END);
     int file_size = ftell(_IN);
@@ -116,7 +119,7 @@ int Decoder::_rseek(long int offset, int origin) {
         _bfr_idx = offset;
     else if (origin == SEEK_CUR)
         _bfr_idx += offset;
-    else throw "WTF Y U SEEK FROM END";
+    else throw "Decoder::WTF Y U SEEK FROM END";
     return offset;
 }
 
@@ -133,7 +136,7 @@ bool Decoder::_read_next_header() {
         if (_buf[0] != 0xFF) {
             fprintf(stderr, "Found 0x%02X\n", _buf[0]);
 
-            throw "DAFUQ WHY NO 0xFF";
+            throw "Decoder::DAFUQ WHY NO 0xFF";
         }
     }
     _has_read_ff = false;

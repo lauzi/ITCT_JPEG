@@ -10,7 +10,7 @@ TARGET = main.exe
 endif
 
 
-$(TARGET): main.cpp huffman.h huffman.cpp decoder.h decoder.cpp encoder.h encoder.cpp
+$(TARGET): main.cpp huffman.hpp huffman.cpp decoder.hpp decoder.cpp encoder.hpp encoder.cpp
 	${GCC} ${FLAGS} huffman.cpp decoder.cpp encoder.cpp main.cpp -o main
 
 .PHONY: clean

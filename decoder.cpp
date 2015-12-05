@@ -1,7 +1,7 @@
 #include <cmath>
 #include <algorithm>
 
-#include "decoder.h"
+#include "decoder.hpp"
 
 #ifndef M_SQRT2
 const double M_SQRT2 = sqrt(2);

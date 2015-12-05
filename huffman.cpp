@@ -1,5 +1,5 @@
 #include <cstdio>
-#include "huffman.h"
+#include "huffman.hpp"
 
 void Huffman::insert(int len, uint8 val) {
     if (len > 8) {

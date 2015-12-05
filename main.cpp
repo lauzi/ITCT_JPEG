@@ -2,8 +2,8 @@
 #include <cstring>
 #include <string>
 
-#include "decoder.h"
-#include "encoder.h"
+#include "decoder.hpp"
+#include "encoder.hpp"
 
 void call(const char *file_name) {
     std::string file_in_name, file_out_name, file_out_out_name;

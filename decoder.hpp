@@ -5,7 +5,7 @@
 #include <cstring>
 #include <string>
 
-#include "huffman.h"
+#include "huffman.hpp"
 
 typedef unsigned char uint8;
 typedef unsigned short uint16;

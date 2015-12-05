@@ -7,8 +7,13 @@
 
 #include "encoder.h"
 
-const double M_SQRT1_2 = sqrt(0.5);
+#ifndef M_SQRT2
+const double M_SQRT2 = sqrt(2);
+#endif
+
+#ifndef M_PI
 const double M_PI = 4 * atan(1);
+#endif
 
 BMPReader::BMPReader(const char *file_name) {
     _IN = fopen(file_name, "rb");

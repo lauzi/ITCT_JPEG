@@ -216,3 +216,5 @@ pip-log.txt
 a.exe
 *.exe
 *.bmp
+*.jpg
+main

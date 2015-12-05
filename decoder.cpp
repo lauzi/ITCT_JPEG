@@ -3,8 +3,13 @@
 
 #include "decoder.h"
 
+#ifndef M_SQRT2
 const double M_SQRT2 = sqrt(2);
+#endif
+
+#ifndef M_PI
 const double M_PI = 4 * atan(1);
+#endif
 
 template <class T>
 T div_ceil(T a, T b) { return (a + b - 1) / b; }
@@ -451,6 +456,9 @@ void Decoder::_read_entropy_block(uint8 J, double out_block[8][8]) {
 }
 
 
+inline int __lg(int __n) {
+    return sizeof(int) * __CHAR_BIT__  - 1 - __builtin_clz(__n); 
+}
 void Decoder::_read_entropy_data() {
     MCUArr *cnls[4];
 
@@ -466,11 +474,11 @@ void Decoder::_read_entropy_data() {
         int sel = _scan_component_selector[c];
         H_i[c] = _H_sampling_factor[sel];
         pxl_w[c] = _max_H / H_i[c];
-        pxl_w_ord[c] = std::__lg(pxl_w[c]);
+        pxl_w_ord[c] = __lg(pxl_w[c]);
 
         V_i[c] = _V_sampling_factor[sel];
         pxl_h[c] = _max_V / V_i[c];
-        pxl_h_ord[c] = std::__lg(pxl_h[c]);
+        pxl_h_ord[c] = __lg(pxl_h[c]);
     }
 
     _read_entropy_bytes();

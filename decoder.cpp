@@ -84,6 +84,15 @@ bool Decoder::solve() {
     return true;
 }
 
+std::vector<int> Decoder::huffman_stats(int i, int j) {
+    return _hs[i][j].counts;
+}
+
+void Decoder::save_to_file(std::string jpg_out) {
+    FILE *out = fopen(jpg_out.c_str(), "wb");
+    std::fwrite(_out_bfr, _out_bfr_idx/8, 1, out);
+    fclose(out);
+}
 
 void Decoder::_open_files() {
     _IN = fopen(in.c_str(), "rb");
@@ -96,9 +105,11 @@ void Decoder::_open_files() {
     printf("File size is %d bytes\n", file_size);
 
     _bfr = new uint8 [file_size];
-    _hc_data = new uint32 [file_size / 4]();
+    _out_bfr = new uint8 [file_size+1024];
+    _hc_data = new uint32 [file_size / 4];
     fread(_bfr, 1, file_size, _IN);
-    _bfr_idx = 0;
+    _bfr_idx = _out_bfr_idx = 0;
+    _auto_out = true;
 }
 
 void Decoder::_close_files() {
@@ -111,6 +122,8 @@ void Decoder::_close_files() {
 
 size_t Decoder::_read(void *ptr, size_t size, size_t count) {
     uint8 *pptr = (uint8*)ptr;
+
+    _write(_bfr, size, count);
 
     for (size_t i = 0, idx = 0; i < count; ++i, idx += size)
         for (int j = size-1; j >= 0; --j)
@@ -152,7 +165,14 @@ bool Decoder::_read_next_header() {
         _SOF0();
         break;
     case 0xC4: // DHT, Define Huffman Table
-        _DHT();
+        if (_hs[0][0].opt == NULL) {
+            _DHT();
+        } else {
+            _auto_out = false;
+            _DHT();
+            _auto_out = true;
+            _write_opt_tables();
+        }
         break;
     case 0xD8: // SOImage
         puts("SOI");
@@ -268,6 +288,11 @@ void Decoder::_SOS() {
 
         printf("SOS::C_s = %d, T_d = %d, T_a = %d\n", _scan_component_selector[j],
                _DC_Huffman_selector[j], _AC_Huffman_selector[j]);
+
+        if (_hs[0][_DC_Huffman_selector[j]].opt == NULL)
+            _hs[0][_DC_Huffman_selector[j]].gen_opt();
+        if (_hs[1][_AC_Huffman_selector[j]].opt == NULL)
+            _hs[1][_AC_Huffman_selector[j]].gen_opt();
     }
 
     fflush(stdout);
@@ -317,7 +342,8 @@ int Decoder::_read_Huffman(Huffman *h) {
             tbl = -val, _hc_i -= 8;
         else {
             _hc_i -= val >> 8;
-            return val & 0xFF;
+            h->counts[val &= 0xFF] += 1;
+            return val;
         }
     }
 
@@ -325,6 +351,7 @@ int Decoder::_read_Huffman(Huffman *h) {
 }
 
 int Decoder::_read_n_bits(int n) {
+    int oldn = n;
     int acc = 0;
     for (int bits; n > 0; n -= bits) {
         if (_hc_i <= 0) _hc_bfr_idx += 1, _hc_i += 32;
@@ -341,11 +368,14 @@ int Decoder::_read_n_bits(int n) {
 
         _hc_i -= bits;
     }
+    _write_bits(acc, oldn);
     return acc;
 }
 
 int16 Decoder::_read_DC() {
     int T = _read_Huffman(_hc_DC);
+    const auto &p = _hc_DC->opt->map.at(T);
+    _write_bits(p.first, p.second);
 
     if (T == 0) return _DC_predict;
 
@@ -357,6 +387,8 @@ int16 Decoder::_read_DC() {
 
 int16 Decoder::_read_AC(int &zz_idx) {
     int RS = _read_Huffman(_hc_AC);
+    const auto &p = _hc_AC->opt->map.at(RS);
+    _write_bits(p.first, p.second);
 
     int R = (RS>>4) & 15, S = RS & 15;
     zz_idx = R;
@@ -519,4 +551,50 @@ void Decoder::_read_entropy_data() {
 
     for (int i = 1; i <= 3; ++i)
         delete cnls[i];
+}
+
+void Decoder::_write(void *ptr, size_t size, size_t count, bool force) {
+    if (_auto_out or force) {
+        if (_out_bfr_idx & 7) _write_bits(-1, 8-(_out_bfr_idx&7), true);
+        memcpy(_out_bfr + (_out_bfr_idx>>3), ptr, size*count), _out_bfr_idx += size*count*8;
+    }
+}
+
+void Decoder::_write_bits(uint32 i, int bits, bool force) {
+    if (not (_auto_out or force)) return;
+    while (bits > 0) {
+        const int t = std::min(bits, 8 - (_out_bfr_idx&7));
+        _out_bfr[_out_bfr_idx>>3] |= ((i>>(bits-t)) & fill1[t]) << (8-t);
+        bits -= t, _out_bfr_idx += t;
+
+        if (not (_out_bfr_idx & 7) and _out_bfr[(_out_bfr_idx>>3)-1] == 0xFF)
+            _out_bfr[_out_bfr_idx>>3] = 0x00, _out_bfr_idx += 8;
+    }
+}
+
+void Decoder::_write_opt_tables() {
+    uint8 *buf = new uint8 [4*(1+16+256)]; int ib = 0;
+    for (int i = 0; i < 2; ++i) {
+        for (int j = 0; j < 2; ++j) {
+            if (_hs[i][j].opt == NULL) continue;
+
+            buf[ib++] = i<<2 | j;
+
+            OptHTable *o = _hs[i][j].opt;
+
+            for (int len = 1; len <= 16; ++len)
+                buf[ib++] = (uint8)o->book[len].size();
+
+            for (int len = 1; len <= 16; ++len) {
+                memcpy(buf+ib, &o->book[len][0], o->book[len].size());
+                ib += o->book[len].size();
+            }
+        }
+    }
+
+    _write_byte(ib & 0xFF); // big-endian
+    _write_byte(ib >> 16);
+    _write(buf, ib, 1, true);
+
+    delete [] buf;
 }

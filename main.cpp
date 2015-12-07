@@ -2,8 +2,7 @@
 #include <cstring>
 #include <string>
 
-#include "decoder.hpp"
-#include "encoder.hpp"
+#include "recoder.hpp"
 
 void call(const char *file_name) {
     std::string file_in_name, file_out_name, file_out_out_name;
@@ -26,20 +25,17 @@ void call(const char *file_name) {
     if (point_idx == -1) {
         file_in_name += ".jpg";
         file_out_name += ".bmp";
-        file_out_out_name += "_from_bmp.jpg";
+        file_out_out_name += "_optimized.jpg";
     } else {
         file_out_name.replace(point_idx, 4, ".bmp");
-        file_out_out_name.replace(point_idx, 4, "_from_bmp.jpg");
+        file_out_out_name.replace(point_idx, 4, "_optimized.jpg");
     }
 
     printf("Input file name: %s\n", file_in_name.c_str());
 
     try {
-        printf("Output jpeg->bmp file name: %s\n", file_out_name.c_str());
-        Decoder(file_in_name, file_out_name).solve();
-
-        printf("Output jpeg->bmp->jpeg file name: %s\n", file_out_out_name.c_str());
-        Encoder(file_out_name, file_out_out_name).solve();
+        printf("Output jpeg->optimized jpeg file name: %s\n", file_out_out_name.c_str());
+        Recoder(file_in_name, file_out_out_name).run();
     } catch (const char *err_msg) {
         puts(err_msg);
     } catch (std::string str) {

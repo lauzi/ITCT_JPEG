@@ -1,5 +1,5 @@
 GCC = g++
-FLAGS = -std=c++11 -Wall -Wextra -Ofast -march=native
+FLAGS = -std=c++11 -Wall -Wextra -g #-Ofast -march=native
 
 UNAME := $(shell uname)
 
@@ -9,9 +9,11 @@ else
 TARGET = main.exe
 endif
 
+lib_cpps={opt_htable,huffman,decoder,encoder,recoder}.cpp
 
-$(TARGET): main.cpp huffman.hpp huffman.cpp decoder.hpp decoder.cpp encoder.hpp encoder.cpp
-	${GCC} ${FLAGS} huffman.cpp decoder.cpp encoder.cpp main.cpp -o main
+$(TARGET): main.cpp huffman.hpp huffman.cpp decoder.hpp decoder.cpp encoder.hpp encoder.cpp opt_htable.hpp opt_htable.cpp recoder.hpp recoder.cpp
+	${GCC} ${FLAGS} ${lib_cpps} main.cpp -o main
+#	${GCC} ${FLAGS} opt_htable.cpp huffman.cpp decoder.cpp encoder.cpp recoder.cpp main.cpp -o main
 
 .PHONY: clean
 clean:

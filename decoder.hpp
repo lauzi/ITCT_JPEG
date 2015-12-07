@@ -13,6 +13,8 @@ typedef char int8;
 typedef short int16;
 typedef unsigned int uint32;
 
+class OptHTable;
+
 class BMPWriter {
 public:
     const int height, width;
@@ -79,10 +81,14 @@ public:
     Decoder (std::string i_in, std::string i_out): in(i_in), out(i_out),
                                                    _IN(NULL), _bmp(NULL),
                                                    _has_read_ff(false), _has_read_mark(false),
-                                                   _bfr(NULL), _DC_predict(0) {}
+                                                   _bfr(NULL), _out_bfr(NULL),
+                                                   _DC_predict(0) {}
     ~Decoder () { _close_files(); delete _bmp; }
 
     bool solve();
+    std::vector<int> huffman_stats(int i, int j);
+    void set_optimal_table(int i, int j, OptHTable *t) { _hs[i][j].opt = t; }
+    void save_to_file(std::string out);
 
     /*         --> x
             y|
@@ -99,6 +105,10 @@ private:
 
     uint8 *_bfr;
     int _bfr_idx;
+
+    bool _auto_out;
+    uint8 *_out_bfr;
+    int _out_bfr_idx;
 
     void _open_files();
     void _close_files();
@@ -146,6 +156,12 @@ private:
     void _read_entropy_bytes();
     void _read_entropy_block(uint8 c, double out_block[8][8]);
     void _read_entropy_data();
+
+    void _write(void *ptr, size_t size, size_t count, bool force=false);
+    void _write_bits(uint32 i, int bits, bool force=false) ;
+    void _write_byte(uint8 b, bool force=false) { _write(&b, 1, 1, force); }
+
+    void _write_opt_tables();
 };
 
 

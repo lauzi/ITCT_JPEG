@@ -82,13 +82,14 @@ public:
                                                    _IN(NULL), _bmp(NULL),
                                                    _has_read_ff(false), _has_read_mark(false),
                                                    _bfr(NULL), _out_bfr(NULL),
-                                                   _DC_predict(0) {}
+                                                   _DC_predict(0),
+                                                   _replaced_dht(false) {}
     ~Decoder () { _close_files(); delete _bmp; }
 
     bool solve();
     std::vector<int> huffman_stats(int i, int j);
     void set_optimal_table(int i, int j, OptHTable *t) { _hs[i][j].opt = t; }
-    void save_to_file(std::string out);
+    int save_to_file(std::string out);
 
     /*         --> x
             y|
@@ -103,6 +104,7 @@ private:
     bool _has_read_mark;
     uint8 _next_mark;
 
+    int _bfr_size;
     uint8 *_bfr;
     int _bfr_idx;
 
@@ -138,6 +140,8 @@ private:
     int _hc_bfr_idx;
     int _hc_i;
 
+    bool _replaced_dht;
+
     Huffman *_hc_DC, *_hc_AC;
 
     void _SOF0();
@@ -157,7 +161,7 @@ private:
     void _read_entropy_block(uint8 c, double out_block[8][8]);
     void _read_entropy_data();
 
-    void _write(void *ptr, size_t size, size_t count, bool force=false);
+    void _write(const void *ptr, size_t size, size_t count, bool force=false);
     void _write_bits(uint32 i, int bits, bool force=false) ;
     void _write_byte(uint8 b, bool force=false) { _write(&b, 1, 1, force); }
 

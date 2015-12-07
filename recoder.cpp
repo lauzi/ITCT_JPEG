@@ -5,9 +5,9 @@
 bool Recoder::run() {
     _get_counts();
 
-    Decoder dec(in, "/tmp/tmp.bmp");
-
     _print_counts();
+
+    Decoder dec(in, "/tmp/tmp.bmp");
 
     OptHTable* tabs[2][2];
     for (int i = 0; i < 2; ++i) {
@@ -30,7 +30,7 @@ bool Recoder::run() {
 void Recoder::_get_counts() {
     Decoder first_pass(in, "/tmp/tmp.bmp");
     first_pass.solve();
-    first_pass.save_to_file("/tmp/tmp.jpg");
+    // first_pass.save_to_file("/tmp/tmp.jpg");
 
     for (int i = 0; i < 2; ++i)
         for (int j = 0; j < 2; ++j)
@@ -44,7 +44,7 @@ void Recoder::_print_counts() {
             for (int k = 0; k < 256; ++k)
                 ps.emplace_back(_counts[i][j][k], k);
             std::sort(std::begin(ps), std::end(ps));
-            printf("Huffman table %d, %d:\n", i, j);
+            printf("Frequency count of %d, %d:\n", i, j);
             for (int i = 255; i >= 0 and ps[i].first > 0; --i)
                 printf("%4d: %7d\n", ps[i].second, ps[i].first);
             puts("");

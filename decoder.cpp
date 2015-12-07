@@ -88,10 +88,13 @@ std::vector<int> Decoder::huffman_stats(int i, int j) {
     return _hs[i][j].counts;
 }
 
-void Decoder::save_to_file(std::string jpg_out) {
+int Decoder::save_to_file(std::string jpg_out) {
     FILE *out = fopen(jpg_out.c_str(), "wb");
     std::fwrite(_out_bfr, _out_bfr_idx/8, 1, out);
     fclose(out);
+    printf("The old file was %d bytes.\n", _bfr_size);
+    printf("The new one is   %d bytes.\n", _out_bfr_idx/8);
+    return _out_bfr_idx/8;
 }
 
 void Decoder::_open_files() {
@@ -104,6 +107,7 @@ void Decoder::_open_files() {
 
     printf("File size is %d bytes\n", file_size);
 
+    _bfr_size = file_size;
     _bfr = new uint8 [file_size];
     _out_bfr = new uint8 [file_size+file_size/5]; // just in case
     _hc_data = new uint32 [file_size / 4];
@@ -171,10 +175,13 @@ bool Decoder::_read_next_header() {
             _DHT();
         } else {
             _auto_out = false;
-            printf("Swapped DHT tables\n");
             _DHT();
             _auto_out = true;
-            _write_opt_tables();
+            if (not _replaced_dht) {
+                _write_opt_tables();
+                printf("Replaced DHT tables\n");
+            }
+            _replaced_dht = true;
         }
         break;
     case 0xD8: // SOImage
@@ -405,6 +412,7 @@ int16 Decoder::_read_AC(int &zz_idx) {
 
 void Decoder::_read_entropy_bytes() {
     _hc_bfr_idx = 0, _hc_i = 32;
+    memset(_hc_data, 0, _bfr_size-3);
     for (int cur_bfr_idx = 0; ; cur_bfr_idx++) {
         for (int j = 24; j >= 0; j -= 8) {
             if (_bfr[_bfr_idx] != 0xFF) {
@@ -558,11 +566,10 @@ void Decoder::_read_entropy_data() {
     _write_byte(_next_mark, true);
 }
 
-void Decoder::_write(void *ptr, size_t size, size_t count, bool force) {
-    if (_auto_out or force) {
-        if (_out_bfr_idx & 7) _write_bits(-1, 8-(_out_bfr_idx&7), true); // fill with 1s
-        memcpy(_out_bfr + (_out_bfr_idx>>3), ptr, size*count), _out_bfr_idx += size*count*8;
-    }
+void Decoder::_write(const void *ptr, size_t size, size_t count, bool force) {
+    if (not (_auto_out or force)) return ;
+    if (_out_bfr_idx & 7) _write_bits(-1, 8-(_out_bfr_idx&7), true); // fill with 1s
+    memcpy(_out_bfr + (_out_bfr_idx>>3), ptr, size*count), _out_bfr_idx += size*count*8;
 }
 
 void Decoder::_write_bits(uint32 i, int bits, bool force) {
@@ -582,7 +589,7 @@ void Decoder::_write_opt_tables() {
     uint8 *buf = new uint8 [4*(1+16+256)]; int ib = 0;
     for (int i = 0; i < 2; ++i) {
         for (int j = 0; j < 2; ++j) {
-            if (_hs[i][j].opt == NULL) continue;
+            if (_hs[i][j].opt == NULL) _hs[i][j].gen_opt();
 
             buf[ib++] = i<<2 | j;
 

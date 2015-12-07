@@ -136,7 +136,7 @@ int Decoder::_rseek(long int offset, int origin) {
     if (origin == SEEK_SET)
         _bfr_idx = offset;
     else if (origin == SEEK_CUR)
-        _bfr_idx += offset;
+        _write(_bfr+_bfr_idx, offset, 1), _bfr_idx += offset;
     else throw "Decoder::WTF Y U SEEK FROM END";
     return offset;
 }
@@ -160,6 +160,8 @@ bool Decoder::_read_next_header() {
     _has_read_ff = false;
     _has_read_mark = false;
 
+    printf("Header at %d:\n", _bfr_idx-2);
+
     switch (_buf[1]) {
     case 0xC0: // SOF0, baseline DCT
         _SOF0();
@@ -169,6 +171,7 @@ bool Decoder::_read_next_header() {
             _DHT();
         } else {
             _auto_out = false;
+            printf("Swapped DHT tables\n");
             _DHT();
             _auto_out = true;
             _write_opt_tables();
@@ -416,8 +419,6 @@ void Decoder::_read_entropy_bytes() {
                     _hc_data[cur_bfr_idx] |= 0xFFU << j;
                 else {
                     _has_read_ff = _has_read_mark = true, _next_mark = tmpc;
-                    _write_byte(0xff, true);
-                    _write_byte(tmpc, true);
                     return ;
                 }
             }
@@ -552,11 +553,14 @@ void Decoder::_read_entropy_data() {
 
     for (int i = 1; i <= 3; ++i)
         delete cnls[i];
+
+    _write_byte(0xff, true);
+    _write_byte(_next_mark, true);
 }
 
 void Decoder::_write(void *ptr, size_t size, size_t count, bool force) {
     if (_auto_out or force) {
-        if (_out_bfr_idx & 7) _write_bits(-1, 8-(_out_bfr_idx&7), true);
+        if (_out_bfr_idx & 7) _write_bits(-1, 8-(_out_bfr_idx&7), true); // fill with 1s
         memcpy(_out_bfr + (_out_bfr_idx>>3), ptr, size*count), _out_bfr_idx += size*count*8;
     }
 }

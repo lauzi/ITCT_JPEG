@@ -30,6 +30,7 @@ bool Recoder::run() {
 void Recoder::_get_counts() {
     Decoder first_pass(in, "/tmp/tmp.bmp");
     first_pass.solve();
+    first_pass.save_to_file("/tmp/tmp.jpg");
 
     for (int i = 0; i < 2; ++i)
         for (int j = 0; j < 2; ++j)

@@ -218,3 +218,5 @@ a.exe
 *.bmp
 *.jpg
 main
+
+main.dSYm/*

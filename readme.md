@@ -1,13 +1,9 @@
 # Usage
-./main.exe takes a jgp file name as argument, transforms it into a bmp file, and then uses
-the bmp file to generate another jpg file.
+./main takes a jgp file name as argument, and optimzes its Huffman table to produce smaller files.
 
 1. make
-2. ./main.exe jpeg_file_name[.jpg]
-3. A decoded .bmp file with the same filename will be generated at the current directory.
-4. An encoded .jpg file ``jpeg _ file _ name _ from _ bmp.jpg'' will also be generated.
-
-You can also "make test" to auto-test the 6 files appended.
+2. ./main jpeg_file_name[.jpg]
+3. An optimized .jpg file ``jpeg _ file _ name _ optimized.jpg'' will also be generated.
 
 # Implementation Details
 ## Decoder
@@ -20,3 +16,8 @@ You can also "make test" to auto-test the 6 files appended.
 - No options, can only transform to 4:2:0.
 - Quantization tables and Huffman Tables are from the standard.
 - Can only read 24-bit bmps with negative height (i.e. pixels are written from top-left to bottom-right).
+
+## Recoder
+- Shitty hacks
+- Uses the shitty algorithm in annex K to keep codeword lengths less than 16.
+- Two-pass, and uses ``/tmp/tmp.bmp''.

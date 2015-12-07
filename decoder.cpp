@@ -105,7 +105,7 @@ void Decoder::_open_files() {
     printf("File size is %d bytes\n", file_size);
 
     _bfr = new uint8 [file_size];
-    _out_bfr = new uint8 [file_size+1024];
+    _out_bfr = new uint8 [file_size+file_size/5]; // just in case
     _hc_data = new uint32 [file_size / 4];
     fread(_bfr, 1, file_size, _IN);
     _bfr_idx = _out_bfr_idx = 0;
@@ -123,7 +123,7 @@ void Decoder::_close_files() {
 size_t Decoder::_read(void *ptr, size_t size, size_t count) {
     uint8 *pptr = (uint8*)ptr;
 
-    _write(_bfr, size, count);
+    _write(_bfr+_bfr_idx, size, count);
 
     for (size_t i = 0, idx = 0; i < count; ++i, idx += size)
         for (int j = size-1; j >= 0; --j)
@@ -343,6 +343,9 @@ int Decoder::_read_Huffman(Huffman *h) {
         else {
             _hc_i -= val >> 8;
             h->counts[val &= 0xFF] += 1;
+
+            auto p = h->opt->map.at(val);
+            _write_bits(p.first, p.second, true);
             return val;
         }
     }
@@ -368,14 +371,12 @@ int Decoder::_read_n_bits(int n) {
 
         _hc_i -= bits;
     }
-    _write_bits(acc, oldn);
+    _write_bits(acc, oldn, true);
     return acc;
 }
 
 int16 Decoder::_read_DC() {
     int T = _read_Huffman(_hc_DC);
-    const auto &p = _hc_DC->opt->map.at(T);
-    _write_bits(p.first, p.second);
 
     if (T == 0) return _DC_predict;
 
@@ -387,8 +388,6 @@ int16 Decoder::_read_DC() {
 
 int16 Decoder::_read_AC(int &zz_idx) {
     int RS = _read_Huffman(_hc_AC);
-    const auto &p = _hc_AC->opt->map.at(RS);
-    _write_bits(p.first, p.second);
 
     int R = (RS>>4) & 15, S = RS & 15;
     zz_idx = R;
@@ -417,6 +416,8 @@ void Decoder::_read_entropy_bytes() {
                     _hc_data[cur_bfr_idx] |= 0xFFU << j;
                 else {
                     _has_read_ff = _has_read_mark = true, _next_mark = tmpc;
+                    _write_byte(0xff, true);
+                    _write_byte(tmpc, true);
                     return ;
                 }
             }
@@ -563,8 +564,9 @@ void Decoder::_write(void *ptr, size_t size, size_t count, bool force) {
 void Decoder::_write_bits(uint32 i, int bits, bool force) {
     if (not (_auto_out or force)) return;
     while (bits > 0) {
-        const int t = std::min(bits, 8 - (_out_bfr_idx&7));
-        _out_bfr[_out_bfr_idx>>3] |= ((i>>(bits-t)) & fill1[t]) << (8-t);
+        int bstart = 8 - (_out_bfr_idx&7);
+        const int t = std::min(bits, bstart);
+        _out_bfr[_out_bfr_idx>>3] |= ((i>>(bits-t)) & fill1[t]) << (bstart-t);
         bits -= t, _out_bfr_idx += t;
 
         if (not (_out_bfr_idx & 7) and _out_bfr[(_out_bfr_idx>>3)-1] == 0xFF)

@@ -1,4 +1,5 @@
 #include <cmath>
+#include <cassert>
 #include <algorithm>
 
 #include "decoder.hpp"
@@ -14,8 +15,8 @@ const double M_PI = 4 * atan(1);
 template <class T>
 T div_ceil(T a, T b) { return (a + b - 1) / b; }
 
-static int fill1[] = {0, 1, 3, 7, 15, 31, 63, 127, 255, 511,
-                      1023, 2047, 4095, 8191, 16383, 32767, 65535};
+static const int fill1[] = {0, 1, 3, 7, 15, 31, 63, 127, 255, 511,
+                            1023, 2047, 4095, 8191, 16383, 32767, 65535};
 
 
 void BMPWriter::write_pxl(double y, double cb, double cr) {
@@ -92,8 +93,10 @@ int Decoder::save_to_file(std::string jpg_out) {
     FILE *out = fopen(jpg_out.c_str(), "wb");
     std::fwrite(_out_bfr, _out_bfr_idx/8, 1, out);
     fclose(out);
-    printf("The old file was %d bytes.\n", _bfr_size);
-    printf("The new one is   %d bytes.\n", _out_bfr_idx/8);
+    printf("The old file is %d bytes.\n", _bfr_size);
+    printf("The new  one is %d bytes.\n", _out_bfr_idx/8);
+    printf("The reduction is %2.2f%% ", ((double)(_bfr_size - _out_bfr_idx/8)) / _bfr_size * 100);
+    printf("(Huffman coded bits: %d -> %d)\n", _count_a, _count_b);
     return _out_bfr_idx/8;
 }
 
@@ -110,7 +113,7 @@ void Decoder::_open_files() {
     _bfr_size = file_size;
     _bfr = new uint8 [file_size]();     // DO NOT REMOVE THE (): THIS INITS THE ARRAY TO ALL 0S
     _hc_data = new uint32 [file_size / 4](); // THIS SHIT COST ME 4 FUCKING HOURS
-    _out_bfr = new uint8 [file_size+file_size/5]; // just in case
+    _out_bfr = new uint8 [file_size+file_size/5](); // just in case
     fread(_bfr, 1, file_size, _IN);
     _bfr_idx = _out_bfr_idx = 0;
     _auto_out = true;
@@ -349,18 +352,19 @@ int Decoder::_read_Huffman(Huffman *h) {
 
         int val = h->tbls[tbl][byte];
         if (val < 0)
-            tbl = -val, _hc_i -= 8;
+            tbl = -val, _hc_i -= 8, _count_a += 8;
         else {
-            _hc_i -= val >> 8;
+            _hc_i -= val >> 8, _count_a += val>>8;
             h->counts[val &= 0xFF] += 1;
 
             auto p = h->opt->map.at(val);
+            _count_b += p.second;
             _write_bits(p.first, p.second, true);
             return val;
         }
     }
 
-    return -1; // should never get here
+    assert (false); // should never get here
 }
 
 int Decoder::_read_n_bits(int n) {
@@ -376,8 +380,7 @@ int Decoder::_read_n_bits(int n) {
         else
             bits = _hc_i, left_len = 0;
 
-        acc <<= bits;
-        acc |= (_hc_data[_hc_bfr_idx] >> left_len) & fill1[bits];
+        (acc <<= bits) |= (_hc_data[_hc_bfr_idx] >> left_len) & fill1[bits];
 
         _hc_i -= bits;
     }
@@ -420,11 +423,12 @@ void Decoder::_read_entropy_bytes() {
                 _bfr_idx++;
                 uint8 tmpc = _bfr[_bfr_idx++];
 
-                if ((tmpc & 0xF8) == 0xD0) // RSTn
+                if ((tmpc & 0xF8) == 0xD0) {// RSTn
                     j += 8;
-                else if (tmpc == 0x00)
+                    printf("RST%2x\n", tmpc^0xF8);
+                } else if (tmpc == 0x00) {
                     _hc_data[cur_bfr_idx] |= 0xFFU << j;
-                else {
+                } else {
                     _has_read_ff = _has_read_mark = true, _next_mark = tmpc;
                     return ;
                 }
@@ -568,7 +572,7 @@ void Decoder::_read_entropy_data() {
 void Decoder::_write(const void *ptr, size_t size, size_t count, bool force) {
     if (not (_auto_out or force)) return ;
     if (_out_bfr_idx & 7) _write_bits(-1, 8-(_out_bfr_idx&7), true); // fill with 1s
-    memcpy(_out_bfr + (_out_bfr_idx>>3), ptr, size*count), _out_bfr_idx += size*count*8;
+    memcpy(&_out_bfr[_out_bfr_idx>>3], ptr, size*count), _out_bfr_idx += size*count*8;
 }
 
 void Decoder::_write_bits(uint32 i, int bits, bool force) {
@@ -576,21 +580,21 @@ void Decoder::_write_bits(uint32 i, int bits, bool force) {
     while (bits > 0) {
         int bstart = 8 - (_out_bfr_idx&7);
         const int t = std::min(bits, bstart);
-        _out_bfr[_out_bfr_idx>>3] |= ((i>>(bits-t)) & fill1[t]) << (bstart-t);
+        (_out_bfr[_out_bfr_idx>>3] <<= t) |= (i>>(bits-t)) & fill1[t];
         bits -= t, _out_bfr_idx += t;
 
         if (not (_out_bfr_idx & 7) and _out_bfr[(_out_bfr_idx>>3)-1] == 0xFF)
-            _out_bfr[_out_bfr_idx>>3] = 0x00, _out_bfr_idx += 8;
+            _out_bfr_idx += 8;
     }
 }
 
 void Decoder::_write_opt_tables() {
-    uint8 *buf = new uint8 [4*(1+16+256)]; int ib = 0;
+    uint8 *buf = new uint8 [4*(1+16+256)]; int ib = 2;
     for (int i = 0; i < 2; ++i) {
         for (int j = 0; j < 2; ++j) {
             if (_hs[i][j].opt == NULL) _hs[i][j].gen_opt();
 
-            buf[ib++] = i<<2 | j;
+            buf[ib++] = i<<4 | j;
 
             OptHTable *o = _hs[i][j].opt;
 
@@ -598,14 +602,20 @@ void Decoder::_write_opt_tables() {
                 buf[ib++] = (uint8)o->book[len].size();
 
             for (int len = 1; len <= 16; ++len) {
+                /*
+                  DO NOT
                 memcpy(buf+ib, &o->book[len][0], o->book[len].size());
                 ib += o->book[len].size();
+                , THIS IS BAD AND FUCKS URSELF UP
+                */
+                for (auto x : o->book[len])
+                    buf[ib++] = x;
             }
         }
     }
 
-    _write_byte(ib & 0xFF); // big-endian
-    _write_byte(ib >> 16);
+    buf[0] = ib >> 8;
+    buf[1] = ib & 0xFF;
     _write(buf, ib, 1, true);
 
     delete [] buf;

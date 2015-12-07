@@ -82,6 +82,7 @@ public:
                                                    _IN(NULL), _bmp(NULL),
                                                    _has_read_ff(false), _has_read_mark(false),
                                                    _bfr(NULL), _out_bfr(NULL),
+                                                   _count_a(0), _count_b(0),
                                                    _DC_predict(0),
                                                    _replaced_dht(false) {}
     ~Decoder () { _close_files(); delete _bmp; }
@@ -111,6 +112,9 @@ private:
     bool _auto_out;
     uint8 *_out_bfr;
     int _out_bfr_idx;
+
+    int _count_a;
+    int _count_b;
 
     void _open_files();
     void _close_files();

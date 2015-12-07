@@ -60,7 +60,7 @@ HBook OptHTable::_optimize_table(const std::vector<int> &arr) {
         heap.emplace(-w, new Node(w, -1, x.second, y.second));
     }
 
-    node_dfs(heap.top().second, 1, lens);
+    node_dfs(heap.top().second, 0, lens);
     adjust_lens(lens);
     delete heap.top().second;
 
@@ -76,14 +76,6 @@ HBook OptHTable::_optimize_table(const std::vector<int> &arr) {
         for (int j = 0; j < lens[i]; ++j)
             nums[i].push_back(ps[idx--].second);
 
-    printf("Optimized table:\n");
-    for (int i = 1; i <= 16; ++i) {
-        printf("%2d: ", i);
-        for (auto x : nums[i])
-            printf("%3d, ", x);
-        puts("");
-    }
-
     return nums;
 }
 
@@ -92,5 +84,26 @@ HMap OptHTable::_make_map(const HBook &b) {
     for (int lvl = 1, cval = 0; lvl <= 16; ++lvl, cval <<= 1)
         for (auto val : b[lvl])
             m[val] = {cval++, lvl};
+
+    printf("Optimized table:\n");
+    for (int i = 1; i <= 16; ++i) {
+        if (b[i].size() == 0) continue;
+        if (false) {
+            printf("%2d: \n", i);
+            for (auto x : b[i]) {
+                printf("  ");
+                for (int j = i-1; j >= 0; --j)
+                    printf("%d", m[x].first>>j&1);
+                printf(": %3d\n", x);
+            }
+            puts("");
+        } else {
+            printf("%2d: ", i);
+            for (auto x : b[i])
+                printf("%3d, ", x);
+            puts("");
+        }
+    }
+
     return m;
 }

@@ -108,9 +108,9 @@ void Decoder::_open_files() {
     printf("File size is %d bytes\n", file_size);
 
     _bfr_size = file_size;
-    _bfr = new uint8 [file_size];
+    _bfr = new uint8 [file_size]();     // DO NOT REMOVE THE (): THIS INITS THE ARRAY TO ALL 0S
+    _hc_data = new uint32 [file_size / 4](); // THIS SHIT COST ME 4 FUCKING HOURS
     _out_bfr = new uint8 [file_size+file_size/5]; // just in case
-    _hc_data = new uint32 [file_size / 4];
     fread(_bfr, 1, file_size, _IN);
     _bfr_idx = _out_bfr_idx = 0;
     _auto_out = true;
@@ -412,7 +412,6 @@ int16 Decoder::_read_AC(int &zz_idx) {
 
 void Decoder::_read_entropy_bytes() {
     _hc_bfr_idx = 0, _hc_i = 32;
-    memset(_hc_data, 0, _bfr_size-3);
     for (int cur_bfr_idx = 0; ; cur_bfr_idx++) {
         for (int j = 24; j >= 0; j -= 8) {
             if (_bfr[_bfr_idx] != 0xFF) {

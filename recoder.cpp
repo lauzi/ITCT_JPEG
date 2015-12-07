@@ -13,6 +13,7 @@ bool Recoder::run() {
     for (int i = 0; i < 2; ++i) {
         for (int j = 0; j < 2; ++j) {
             tabs[i][j] = new OptHTable(_counts[i][j]);
+
             dec.set_optimal_table(i, j, tabs[i][j]);
         }
     }

@@ -1,3 +1,5 @@
+#include <set>
+#include <map>
 #include <queue>
 #include <cassert>
 
@@ -44,7 +46,26 @@ void adjust_lens(std::vector<int> &lens) {
     }
 }
 
-HBook OptHTable::_optimize_table(const std::vector<int> &arr) {
+HBook make_book(const std::vector<int> &arr, const std::vector<int> lens) {
+    HBook nums(17);
+
+    std::vector<std::pair<int, int>> ps;
+    for (unsigned i = 0; i < arr.size(); ++i)
+        if (arr[i] > 0)
+            ps.emplace_back(arr[i], i);
+
+    std::sort(std::begin(ps), std::end(ps));
+    for (int i = 1, idx = ps.size()-1; i <= 16; ++i)
+        for (int j = 0; j < lens[i]; ++j)
+            nums[i].push_back(ps[idx--].second);
+
+    return nums;
+}
+
+HBook OptHTable::_optimize_table(const std::vector<int> &arr, bool opt) {
+    if (opt)
+        return _opt_optimize_table(arr);
+
     std::priority_queue<std::pair<int, Node*>> heap; // max heap
     std::vector<int> lens(17);
 
@@ -64,20 +85,133 @@ HBook OptHTable::_optimize_table(const std::vector<int> &arr) {
     adjust_lens(lens);
     delete heap.top().second;
 
-    HBook nums(17);
-
-    std::vector<std::pair<int, int>> ps;
-    for (unsigned i = 0; i < arr.size(); ++i)
-        if (arr[i] > 0)
-            ps.emplace_back(arr[i], i);
-
-    std::sort(std::begin(ps), std::end(ps));
-    for (int i = 1, idx = ps.size()-1; i <= 16; ++i)
-        for (int j = 0; j < lens[i]; ++j)
-            nums[i].push_back(ps[idx--].second);
-
-    return nums;
+    return make_book(arr, lens);
 }
+
+
+using Width = int;
+using Weight = std::pair<int, int>; // (actual weight, index)
+using item_t = std::pair<Width, Weight>;
+using mitem_t = std::pair<Weight, std::vector<item_t>>;
+
+inline int __lg(int __n) {
+    return sizeof(int) * __CHAR_BIT__  - 1 - __builtin_clz(__n); 
+}
+
+template <typename T>
+inline
+void add_to(std::vector<T> &xs, const std::vector<T> &ys) {
+    xs.insert(xs.end(), ys.begin(), ys.end());
+}
+
+template <typename T>
+std::vector<T> pm_merge(const std::vector<T> &xs, const std::vector<T> &ys) {
+    std::vector<T> ans;
+
+    auto itx = xs.begin(), ity = ys.begin();
+    while (itx != xs.end() and ity != ys.end()) {
+        if (*itx < *ity)
+            ans.push_back(*itx), ++itx;
+        else
+            ans.push_back(*ity), ++ity;
+    }
+
+    ans.insert(ans.end(), itx, xs.end());
+    ans.insert(ans.end(), ity, ys.end());
+
+    return ans;
+}
+
+template <typename A, typename B>
+inline
+std::pair<A, B> pm_add(const std::pair<A, B> &x, const std::pair<A, B> &y) {
+    return {x.first+y.first, x.second+y.second};
+}
+
+std::vector<mitem_t> pm_pair(const std::vector<mitem_t> arr) {
+    auto ita = arr.begin(), itb = ita; ++itb;
+
+    std::vector<mitem_t> ans;
+
+    while (itb != arr.end()) {
+        ans.emplace_back(pm_add(ita->first, itb->first), ita->second);
+        add_to(ans.back().second, itb->second);
+        ita = ++itb; ++itb;
+    }
+
+    return ans;
+}
+
+std::vector<item_t> package_merge(std::vector<item_t> arr_in, Width X) {
+    for (unsigned i = 1; i < arr_in.size(); ++i) {
+        if (arr_in[i-1] <= arr_in[i]) continue;
+        
+        std::sort(arr_in.begin(), arr_in.end());
+        break;
+    }
+
+    std::vector<item_t> ans;
+
+    const int L = __lg(X);
+    std::vector<std::vector<mitem_t>> arr(L+2);
+
+    for (const item_t &p : arr_in)
+        arr[__lg(p.first)].push_back(mitem_t{p.second, {p}});
+
+    for (int d = 0; X > 0; ++d) {
+        const int min_width = X & -X;
+
+        while (arr[d].size() == 0)
+            if (++d > L)
+                throw "No solution";
+
+        const int r = 1<<d;
+        if (r > min_width) throw "No solution";
+        if (r == min_width) {
+            for (const item_t &p : arr[d][0].second)
+                ans.push_back(p);
+            arr[d].erase(arr[d].begin());
+            X -= r;
+        }
+
+        arr[d+1] = pm_merge(arr[d+1], pm_pair(arr[d]));
+    }
+
+    return ans;
+}
+
+
+using weight = std::pair<int, int>;
+
+HBook OptHTable::_opt_optimize_table(const std::vector<int> &arr) {
+    // ref: https://www.ics.uci.edu/~dan/pubs/LenLimHuff.pdf
+
+    std::vector<int> freqs(arr);
+    freqs.push_back(0);
+    std::sort(freqs.begin(), freqs.end());
+
+    std::vector<item_t> noteset;
+    int n = 0;
+    for (unsigned i = 0, cnt = 16; i < freqs.size(); ++i) {
+        if (freqs[i] == 0 and i > 0) continue; // to prevent all 0s
+
+        n += 1;
+        for (int l = 0; l < 16; ++l)
+            noteset.push_back({1<<l, {freqs[i], cnt++}});
+    }
+
+    auto ans = package_merge(noteset, (n-1)<<(16+1));
+
+    std::vector<int> cnts(260);
+    for (const item_t &p: ans)
+        cnts[p.second.second / 16] += 1;
+
+    std::vector<int> lens(16+1);
+    for (const int x: cnts) lens[x] += 1;
+
+    return make_book(arr, lens);
+}
+
 
 HMap OptHTable::_make_map(const HBook &b) {
     HMap m;

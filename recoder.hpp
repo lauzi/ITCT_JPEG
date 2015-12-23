@@ -8,8 +8,8 @@
 class Recoder {
     public:
     std::string in, out;
-    Recoder (std::string i_in, std::string i_out):
-        in(i_in), out(i_out) {}
+    Recoder (std::string i_in, std::string i_out, bool opt):
+        in(i_in), out(i_out), _opt(opt) {}
 
     bool run();
 
@@ -18,6 +18,8 @@ class Recoder {
 
     void _get_counts();
     void _print_counts();
+
+    bool _opt;
 };
 
 #endif

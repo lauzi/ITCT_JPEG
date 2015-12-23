@@ -11,14 +11,16 @@ using HMap = std::unordered_map<int, HPair>;
 class OptHTable {
     public:
     OptHTable (const HBook &b): book(b), map(_make_map(b)) {}
-    OptHTable (const std::vector<int> &v): book(_optimize_table(v)),
-                                           map(_make_map(book)) {}
+    OptHTable (const std::vector<int> &v, bool opt):
+        book(_optimize_table(v, opt)),
+        map(_make_map(book)) {}
 
     const HBook book;
     const HMap map;
 
     private:
-    static HBook _optimize_table(const std::vector<int> &arr);
+    static HBook _optimize_table(const std::vector<int> &arr, bool opt);
+    static HBook _opt_optimize_table(const std::vector<int> &arr);
     static HMap _make_map(const HBook&);
 };
 

@@ -1,7 +1,6 @@
-#include <set>
 #include <map>
+#include <list>
 #include <queue>
-#include <cassert>
 
 #include "opt_htable.hpp"
 
@@ -91,7 +90,7 @@ HBook OptHTable::_optimize_table(const std::vector<int> &arr, bool opt) {
 using Width = int;
 using Weight = std::pair<int, int>; // (actual weight, index)
 using item_t = std::pair<Width, Weight>;
-using mitem_t = std::pair<Weight, std::vector<item_t>>;
+using mitem_t = std::pair<Weight, std::list<item_t>>;
 
 inline int __lg(int __n) {
     return sizeof(int) * __CHAR_BIT__  - 1 - __builtin_clz(__n); 
@@ -101,6 +100,13 @@ template <typename T>
 inline
 void add_to(std::vector<T> &xs, const std::vector<T> &ys) {
     xs.insert(xs.end(), ys.begin(), ys.end());
+}
+
+template <typename T>
+inline
+void add_to(std::list<T> &xs, std::list<T> &ys) {
+    // This empties ys and should be in constant time according to cppreference.com
+    xs.splice(xs.begin(), ys);
 }
 
 template <typename T>
@@ -127,7 +133,7 @@ std::pair<A, B> pm_add(const std::pair<A, B> &x, const std::pair<A, B> &y) {
     return {x.first+y.first, x.second+y.second};
 }
 
-std::vector<mitem_t> pm_pair(const std::vector<mitem_t> arr) {
+std::vector<mitem_t> pm_pair(std::vector<mitem_t> arr) {
     std::vector<mitem_t> ans;
 
     for (auto ita = arr.begin(); ita != arr.end(); ita += 2) {
@@ -162,7 +168,8 @@ std::vector<item_t> package_merge(std::vector<item_t> arr_in, Width X) {
         const int r = 1<<d;
         if (r > min_width) throw "No solution: too few shit";
         if (r == min_width) {
-            add_to(ans, arr[d][0].second);
+            for (const auto &x : arr[d][0].second)
+                ans.push_back(x);
             arr[d].erase(arr[d].begin());
             X -= r;
         }

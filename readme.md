@@ -2,7 +2,7 @@
 ./main takes a jgp file name as argument, and optimzes its Huffman table to produce smaller files.
 
 1. make
-2. ./main jpeg_file_name[.jpg]
+2. ./main [-O] jpeg_file_name[.jpg]
 3. An optimized .jpg file ``jpeg _ file _ name _ optimized.jpg'' will also be generated.
 
 # Implementation Details
@@ -19,5 +19,6 @@
 
 ## Recoder
 - Shitty hacks
-- Uses the shitty algorithm in annex K to keep codeword lengths less than 16.
+- By default uses the shitty algorithm in annex K to keep codeword lengths less than 16.
+- ``-O'' to use a better algorithm.
 - Two-pass, and uses ``/tmp/tmp.bmp''.

@@ -5,7 +5,7 @@
 bool Recoder::run() {
     _get_counts();
 
-    _print_counts();
+    // _print_counts();
 
     Decoder dec(in, "/tmp/tmp.bmp");
 

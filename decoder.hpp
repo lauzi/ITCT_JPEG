@@ -84,7 +84,8 @@ public:
                                                    _bfr(NULL), _out_bfr(NULL),
                                                    _count_a(0), _count_b(0),
                                                    _DC_predict(0),
-                                                   _replaced_dht(false) {}
+                                                   _replaced_dht(false),
+                                                   _pad_count(0) {}
     ~Decoder () { _close_files(); delete _bmp; }
 
     bool solve();
@@ -166,7 +167,8 @@ private:
     void _read_entropy_data();
 
     void _write(const void *ptr, size_t size, size_t count, bool force=false);
-    void _write_bits(uint32 i, int bits, bool force=false) ;
+    unsigned _pad_count;
+    void _write_bits(uint32 i, int bits, bool force=false);
     void _write_byte(uint8 b, bool force=false) { _write(&b, 1, 1, force); }
 
     void _write_opt_tables();

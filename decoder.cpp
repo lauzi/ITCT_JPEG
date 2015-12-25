@@ -96,7 +96,7 @@ int Decoder::save_to_file(std::string jpg_out) {
     printf("The old file is %d bytes.\n", _bfr_size);
     printf("The new  one is %d bytes.\n", _out_bfr_idx/8);
     printf("The reduction is %2.2f%% ", ((double)(_bfr_size - _out_bfr_idx/8)) / _bfr_size * 100);
-    printf("(Huffman coded bits: %d -> %d)\n", _count_a, _count_b);
+    printf("(Huffman coded bits: %d -> %d, %d bytes padded)\n", _count_a, _count_b, _pad_count);
     return _out_bfr_idx/8;
 }
 
@@ -584,7 +584,7 @@ void Decoder::_write_bits(uint32 i, int bits, bool force) {
         bits -= t, _out_bfr_idx += t;
 
         if (not (_out_bfr_idx & 7) and _out_bfr[(_out_bfr_idx>>3)-1] == 0xFF)
-            _out_bfr_idx += 8;
+            _out_bfr_idx += 8, _pad_count += 1;
     }
 }
 

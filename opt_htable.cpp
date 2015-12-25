@@ -1,41 +1,25 @@
 #include <map>
 #include <list>
-#include <queue>
+#include <climits>
+#include <cassert>
 
 #include "opt_htable.hpp"
 
-struct Node {
-    int w, label; Node *lft, *rgt;
-    Node (int nw, int lbl, Node *nlft=NULL, Node *nrgt=NULL):
-        w(nw), label(lbl), lft(nlft), rgt(nrgt) {}
-    ~Node () {
-        delete lft;
-        delete rgt;
-    }
-};
-
-void node_dfs(Node *n, unsigned lvl, std::vector<int> &lens) {
-    if (n == NULL) return ;
-    if (n->label != -1) {
-        if (lvl >= lens.size()) lens.resize(lvl+1);
-        lens[lvl] += 1;
-    } else {
-        node_dfs(n->lft, lvl+1, lens);
-        node_dfs(n->rgt, lvl+1, lens);
-    }
-}
-
 // not optimal, but still acceptable
-void adjust_lens(std::vector<int> &lens) {
-    while (lens.size()-1 > 16) {
-        if (lens.back() == 0) {
-            lens.pop_back();
+std::vector<int> adjust_lens(std::vector<int> lens) {
+    for (int i = lens.size()-1, j = i-2; i > 16; ) {
+        if (lens[i] == 0) {
+            i -= 1, j = std::min(j, i-2);
             continue;
         }
-        int i = lens.size()-1, j = i-2;
+
         while (lens[j] == 0) --j;
-        lens[i] -= 2, lens[i-1] += 1, lens[j] -= 1, lens[j+1] += 2;
+        int n = std::min(lens[i]/2, lens[j]);
+        lens[i] -= 2*n, lens[i-1] += n, lens[j] -= n, lens[j+1] += 2*n;
+        j = std::min(j+1, i-2);
     }
+
+    lens.resize(1+16);
 
     for (int i = 16; i >= 1; --i) {
         if (lens[i] > 0) {
@@ -43,6 +27,8 @@ void adjust_lens(std::vector<int> &lens) {
             break;
         }
     }
+
+    return lens;
 }
 
 HBook make_book(const std::vector<int> &arr, const std::vector<int> &lens) {
@@ -61,29 +47,57 @@ HBook make_book(const std::vector<int> &arr, const std::vector<int> &lens) {
     return nums;
 }
 
+std::vector<int> huffman_lens(const std::vector<int> &arr) {
+    std::vector<int> queue, tree;
+    for (auto x: arr)
+        if (x > 0) queue.push_back(x);
+    queue.push_back(0);
+    std::sort(queue.begin(), queue.end());
+
+    std::vector<std::pair<int, int>> children;
+    const int LEAF = -1;
+
+    for (unsigned iq = 0, it = 0; ; ) {
+        std::pair<int, int> best{INT_MAX, -1}; // value, mode
+
+        if (iq+1 < queue.size())
+            best = std::min(best, {queue[iq]+queue[iq+1], 0});
+
+        if (iq < queue.size() and it < tree.size())
+            best = std::min(best, {queue[iq]+tree[it], 1});
+
+        if (it+1 < tree.size())
+            best = std::min(best, {tree[it]+tree[it+1], 2});
+
+        if (best.second == -1) break;
+        else if (best.second == 0) children.emplace_back(LEAF, LEAF), iq += 2;
+        else if (best.second == 1) children.emplace_back(LEAF, it), iq += 1, it += 1;
+        else if (best.second == 2) children.emplace_back(it, it+1), it += 2;
+
+        tree.push_back(best.first);
+    }
+
+    std::vector<int> lens(16+1);
+    std::vector<unsigned> depths(children.size()); // depths[-1] == 0
+
+    for (int i = children.size()-1; i >= 0; --i) {
+        const unsigned newd = depths[i]+1;
+        if (newd >= lens.size())
+            lens.resize(newd+1);
+
+#define DO(x) if ((x) == LEAF) lens[newd] += 1; else depths[x] = newd;
+
+        DO(children[i].first);
+        DO(children[i].second);
+    }
+
+    return lens;
+}
+
 HBook OptHTable::_optimize_table(const std::vector<int> &arr, bool opt) {
     if (opt) return _opt_optimize_table(arr);
 
-    std::priority_queue<std::pair<int, Node*>> heap; // max heap
-    std::vector<int> lens(17);
-
-    for (unsigned i = 0; i < arr.size(); ++i)
-        if (arr[i] > 0)
-            heap.emplace(-arr[i], new Node(arr[i], i));
-    heap.emplace(0, new Node(0, 257)); // to prevent all 1s
-
-    while (heap.size() > 1) {
-        auto x = heap.top(); heap.pop();
-        auto y = heap.top(); heap.pop();
-        int w = -(x.first + y.first);
-        heap.emplace(-w, new Node(w, -1, x.second, y.second));
-    }
-
-    node_dfs(heap.top().second, 0, lens);
-    adjust_lens(lens);
-    delete heap.top().second;
-
-    return make_book(arr, lens);
+    return make_book(arr, adjust_lens(huffman_lens(arr)));
 }
 
 
@@ -93,7 +107,7 @@ using item_t = std::pair<Width, Weight>;
 using mitem_t = std::pair<Weight, std::list<item_t>>;
 
 inline int __lg(int __n) {
-    return sizeof(int) * __CHAR_BIT__  - 1 - __builtin_clz(__n); 
+    return sizeof(int) * __CHAR_BIT__  - 1 - __builtin_clz(__n);
 }
 
 template <typename T>
@@ -207,14 +221,7 @@ HBook OptHTable::_opt_optimize_table(const std::vector<int> &arr) {
     std::vector<int> lens(16+1);
     for (const int x: cnts) lens[x] += 1;
 
-    for (int i = 16; i >= 1; --i) { // remove the fucking 0-chance codeword
-        if (lens[i] == 0) continue;
-
-        lens[i] -= 1;
-        break;
-    }
-
-    return make_book(arr, lens);
+    return make_book(arr, adjust_lens(lens)); // adjust_lens to remove the 0
 }
 
 
@@ -227,21 +234,11 @@ HMap OptHTable::_make_map(const HBook &b) {
     printf("Optimized table:\n");
     for (int i = 1; i <= 16; ++i) {
         if (b[i].size() == 0) continue;
-        if (false) {
-            printf("%2d: \n", i);
-            for (auto x : b[i]) {
-                printf("  ");
-                for (int j = i-1; j >= 0; --j)
-                    printf("%d", m[x].first>>j&1);
-                printf(": %3d\n", x);
-            }
-            puts("");
-        } else {
-            printf("%2d: ", i);
-            for (auto x : b[i])
-                printf("%3d, ", x);
-            puts("");
-        }
+
+        printf("%2d:", i);
+        for (auto x : b[i])
+            printf(" %3d,", x);
+        puts("\b ");
     }
 
     return m;

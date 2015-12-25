@@ -183,6 +183,8 @@ bool Decoder::_read_next_header() {
             if (not _replaced_dht) {
                 _write_opt_tables();
                 printf("Replaced DHT tables\n");
+            } else {
+                _out_bfr_idx -= 8 * 2; // remove the header
             }
             _replaced_dht = true;
         }

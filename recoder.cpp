@@ -29,7 +29,7 @@ bool Recoder::run() {
 }
 
 void Recoder::_get_counts() {
-    Decoder first_pass(in, "/tmp/tmp.bmp");
+    Decoder first_pass(in, "tmp.bmp");
     first_pass.solve();
     // first_pass.save_to_file("/tmp/tmp.jpg");
 
